@@ -1,0 +1,4 @@
+# Editor config files
+.ipynb_checkpoints/
+.idea/
+.env/
