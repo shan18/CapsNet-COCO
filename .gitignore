@@ -1,5 +1,6 @@
 # Custom folders
 resources/
+dataset/
 
 # Editor config files
 .ipynb_checkpoints/
