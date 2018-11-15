@@ -1,3 +1,9 @@
+import random
+import argparse
+import cv2
+import pickle
+import numpy as np
+
 from pycocotools.coco import COCO
 
 
@@ -11,8 +17,10 @@ def get_categories_and_supercategories(coco):
     """
     Obtain MSCOCO 2017 categories and supercategories
     """
+    print('\nObtaining MSCOCO 2017 categories and supercategories...')
     categories = coco.loadCats(coco.getCatIds())
     supercategories = set([category['supercategory'] for category in categories])
+    print('Done.')
     return categories, supercategories
 
 
@@ -60,15 +68,65 @@ def map_image_to_supercategories(supercategories, supercategory_to_img, supercat
     return image_to_supercategories
 
 
-def create_dataset():
-    """
-    :return: 1. Dictionary mapping image to a one-hot vector of its supercategories
-             2. List of supercategories where the corresponding index of each supercategory is its id
-    """
+def create_training_data(coco, image_to_supercategories, img_size):
+    training_data = []
+    for img_id, supercategory in image_to_supercategories.items():
+        img = coco.loadImgs([img_id])[0]
+        img_array = cv2.imread('%s/%s/%s' % (DATA_DIR, DATA_TYPE, img['file_name']), cv2.IMREAD_GRAYSCALE)
+        new_img_array = cv2.resize(img_array, (img_size, img_size))
+        training_data.append([new_img_array, supercategory])
+    random.shuffle(training_data)  # shuffle items to reduce homogeneity
+    return training_data
+
+
+def create_features_and_labels(training_data, img_size):
+    X, y = [], []
+    for features, label in training_data:
+        X.append(features)
+        y.append(label)
+
+    # Preprocess feature vector
+    X = np.array(X).reshape(-1, img_size, img_size, 1)  # last dimension is to specify grayscale image
+
+    return X, y
+
+
+def save_dataset(X, y):
+    print('\nSaving dataset to drive...')
+    pickle_out_x = open('X.pickle', 'wb')
+    pickle.dump(X, pickle_out_x)
+    pickle_out_x.close()
+
+    pickle_out_y = open('y.pickle', 'wb')
+    pickle.dump(y, pickle_out_y)
+    pickle_out_y.close()
+    print('Saved.\nFeatures: X.pickle\nLabels: y.pickle')
+
+
+def main(img_size):
+    """ Map image to supercategories"""
     coco = COCO(ANN_FILE)  # Initialize coco api
     categories, supercategories = get_categories_and_supercategories(coco)
+    print('\nMapping image to supercategories...')
     supercategory_ids = assign_supercategory_ids(supercategories)
     supercategory_to_img = map_supercategory_to_image(coco, categories)
     image_to_supercategories = map_image_to_supercategories(supercategories, supercategory_to_img, supercategory_ids)
-    return image_to_supercategories, supercategories
+    print('Done.')
 
+    """ Create training dataset """
+    print('\nCreating the training dataset...')
+    training_data = create_training_data(coco, image_to_supercategories, img_size)
+    X, y = create_features_and_labels(training_data, img_size)
+    print('Done.')
+    save_dataset(X, y)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Create dataset using MSCOCO for CapsNet')
+    parser.add_argument('-s', '--size', default=100, help='Image size to use in dataset')
+    args = parser.parse_args()
+
+    if args.size < 50 or args.size > 200:
+        parser.error('Image size should be within 50 to 200 pixels')
+
+    main(args.size)
