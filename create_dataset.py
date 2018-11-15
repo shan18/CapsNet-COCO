@@ -71,3 +71,4 @@ def create_dataset():
     supercategory_to_img = map_supercategory_to_image(coco, categories)
     image_to_supercategories = map_image_to_supercategories(supercategories, supercategory_to_img, supercategory_ids)
     return image_to_supercategories, supercategories
+
