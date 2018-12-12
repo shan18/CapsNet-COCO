@@ -92,7 +92,7 @@ def create_features_and_labels(training_data, img_size):
 
 
 def save_dataset(X, y):
-    print('\nSaving dataset to drive...')
+    print('\nSaving dataset to disk...')
     pickle_out_x = open('X.pickle', 'wb')
     pickle.dump(X, pickle_out_x)
     pickle_out_x.close()
