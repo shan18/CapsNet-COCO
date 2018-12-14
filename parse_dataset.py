@@ -85,25 +85,31 @@ def create_features_and_labels(training_data, img_size):
         X.append(features)
         y.append(label)
 
-    # Preprocess feature vector
-    X = np.array(X).reshape(-1, img_size, img_size, 1)  # last dimension is to specify grayscale image
+    # Tweak the feature vector
+    X = np.array(X, dtype=np.float32)
+    X = X.reshape(-1, img_size, img_size, 1)  # last dimension is to specify grayscale image
+
+    # Tweak the label vector
+    y = np.array(y, dtype=np.int64)
 
     return X, y
 
 
-def save_dataset(X, y):
+def save_dataset(X, y, dataset_type):
     print('\nSaving dataset to disk...')
-    pickle_out_x = open('X.pickle', 'wb')
+    X_name = 'X_{dataset_type}.pickle'.format(dataset_type=dataset_type)
+    pickle_out_x = open(X_name, 'wb')
     pickle.dump(X, pickle_out_x)
     pickle_out_x.close()
 
-    pickle_out_y = open('y.pickle', 'wb')
+    y_name = 'y_{dataset_type}.pickle'.format(dataset_type=dataset_type)
+    pickle_out_y = open(y_name, 'wb')
     pickle.dump(y, pickle_out_y)
     pickle_out_y.close()
-    print('Saved.\nFeatures: X.pickle\nLabels: y.pickle')
+    print('Saved.\nFeatures: %s\nLabels: %s' % (X_name, y_name))
 
 
-def main(img_size):
+def main(img_size, dataset_type):
     """ Map image to supercategories"""
     coco = COCO(ANN_FILE)  # Initialize coco api
     categories, supercategories = get_categories_and_supercategories(coco)
@@ -113,20 +119,21 @@ def main(img_size):
     image_to_supercategories = map_image_to_supercategories(supercategories, supercategory_to_img, supercategory_ids)
     print('Done.')
 
-    """ Create training dataset """
-    print('\nCreating the training dataset...')
+    """ Create dataset """
+    print('\nCreating %s dataset...' % dataset_type)
     training_data = create_training_data(coco, image_to_supercategories, img_size)
     X, y = create_features_and_labels(training_data, img_size)
     print('Done.')
-    save_dataset(X, y)
+    save_dataset(X, y, dataset_type)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create dataset using MSCOCO for CapsNet')
     parser.add_argument('-s', '--size', default=100, help='Image size to use in dataset')
+    parser.add_argument('-t', '--type', choices=['train', 'val', 'test'], help='Type of dataset')
     args = parser.parse_args()
 
     if args.size < 50 or args.size > 200:
         parser.error('Image size should be within 50 to 200 pixels')
 
-    main(args.size)
+    main(args.size, args.type)
