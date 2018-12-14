@@ -87,7 +87,6 @@ def create_features_and_labels(training_data, img_size):
 
     # Tweak the feature vector
     X = np.array(X, dtype=np.float32)
-    X = X.reshape(-1, img_size, img_size, 1)  # last dimension is to specify grayscale image
 
     # Tweak the label vector
     y = np.array(y, dtype=np.int64)
