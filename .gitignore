@@ -1,7 +1,14 @@
-# Custom files and folders
+# Reference files and folders
 resources/
-dataset/
-*.pickle
+references/
+test_notebooks/
+
+# Large files
+dataset/Others/
+dataset/annotations/*.json
+dataset/train2017/*.jpg
+dataset/val2017/*.jpg
+dataset/*.pickle
 
 # Editor config files
 __pycache__/

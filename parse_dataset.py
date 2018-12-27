@@ -7,12 +7,6 @@ import numpy as np
 from pycocotools.coco import COCO
 
 
-# specify dataset and annotation directories
-DATA_DIR = 'dataset'
-DATA_TYPE = 'val2017'
-ANN_FILE = '{}/annotations/instances_{}.json'.format(DATA_DIR, DATA_TYPE)
-
-
 def get_categories_and_supercategories(coco):
     """
     Obtain MSCOCO 2017 categories and supercategories
@@ -68,49 +62,93 @@ def map_image_to_supercategories(supercategories, supercategory_to_img, supercat
     return image_to_supercategories
 
 
-def create_training_data(coco, image_to_supercategories, img_size):
-    training_data = []
+def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+    """ Call in a loop to create terminal progress bar
+    :params iteration: current iteration (Int)
+    :params total: total iterations (Int)
+    :params prefix: prefix string (Str)
+    :params suffix: suffix string (Str)
+    :params decimals: positive number of decimals in percent complete (Int)
+    :params length: character length of bar (Int)
+    :params fill: bar fill character (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+
+def create_dataset(coco, image_to_supercategories, img_size):
+    data = []
+    number_of_images = len(image_to_supercategories)
+
+    # Initial call to print 0% progress
+    print_progress_bar_counter = 0
+    print_progress_bar(print_progress_bar_counter, number_of_images, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
     for img_id, supercategory in image_to_supercategories.items():
         img = coco.loadImgs([img_id])[0]
-        img_array = cv2.imread('%s/%s/%s' % (DATA_DIR, DATA_TYPE, img['file_name']), cv2.IMREAD_GRAYSCALE)
+        img_array = cv2.imread('%s/%s/%s' % (data_dir, data_type, img['file_name']), cv2.IMREAD_GRAYSCALE)
         new_img_array = cv2.resize(img_array, (img_size, img_size))
-        training_data.append([new_img_array, supercategory])
-    random.shuffle(training_data)  # shuffle items to reduce homogeneity
-    return training_data
+        data.append([new_img_array, supercategory])
+
+        # Update Progress Bar
+        print_progress_bar_counter += 1
+        print_progress_bar(print_progress_bar_counter, number_of_images, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
+    random.shuffle(data)  # shuffle items to reduce homogeneity
+    return data
 
 
-def create_features_and_labels(training_data, img_size):
-    X, y = [], []
-    for features, label in training_data:
-        X.append(features)
+def create_features_and_labels(data):
+    """ Create feature and label vector
+    :param data: list of (features, labels)
+    :return x: Feature vector (numpy array)
+    :return y: Label vector (numpy array)
+    """
+    x, y = [], []
+    for features, label in data:
+        x.append(features)
         y.append(label)
 
     # Tweak the feature vector
-    X = np.array(X, dtype=np.float32)
+    x = np.array(x, dtype=np.float32)
 
     # Tweak the label vector
     y = np.array(y, dtype=np.int64)
 
-    return X, y
+    return x, y
 
 
-def save_dataset(X, y, dataset_type):
+def save_dataset(x, y, dataset_type, output_dir):
+    """ Save the preprocessed dataset
+    :param x: Feature vector
+    :param y: Label vector
+    :return: a scalar loss value.
+    """
     print('\nSaving dataset to disk...')
-    X_name = 'X_{dataset_type}.pickle'.format(dataset_type=dataset_type)
-    pickle_out_x = open(X_name, 'wb')
-    pickle.dump(X, pickle_out_x)
+    x_name = '{out}/x_{dataset_type}.pickle'.format(out=output_dir, dataset_type=dataset_type)
+    pickle_out_x = open(x_name, 'wb')
+    pickle.dump(x, pickle_out_x)
     pickle_out_x.close()
 
-    y_name = 'y_{dataset_type}.pickle'.format(dataset_type=dataset_type)
+    y_name = '{out}/y_{dataset_type}.pickle'.format(out=output_dir, dataset_type=dataset_type)
     pickle_out_y = open(y_name, 'wb')
     pickle.dump(y, pickle_out_y)
     pickle_out_y.close()
-    print('Saved.\nFeatures: %s\nLabels: %s' % (X_name, y_name))
+    print('Saved.\nFeatures: %s\nLabels: %s' % (x_name, y_name))
 
 
-def main(img_size, dataset_type):
-    """ Map image to supercategories"""
-    coco = COCO(ANN_FILE)  # Initialize coco api
+def main(img_size, dataset_type, output_dir):
+    """ Map image to supercategories
+    :param img_size: Image dimensions
+    :param dataset_type: Can be train, val, test
+    :param output_dir: Directory where the parsed dataset is to be stored
+    """
+    coco = COCO(ann_file)  # Initialize coco api
     categories, supercategories = get_categories_and_supercategories(coco)
     print('\nMapping image to supercategories...')
     supercategory_ids = assign_supercategory_ids(supercategories)
@@ -120,19 +158,25 @@ def main(img_size, dataset_type):
 
     """ Create dataset """
     print('\nCreating %s dataset...' % dataset_type)
-    training_data = create_training_data(coco, image_to_supercategories, img_size)
-    X, y = create_features_and_labels(training_data, img_size)
+    data = create_dataset(coco, image_to_supercategories, img_size)
+    x, y = create_features_and_labels(data)
     print('Done.')
-    save_dataset(X, y, dataset_type)
+    save_dataset(x, y, dataset_type, output_dir)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create dataset using MSCOCO for CapsNet')
-    parser.add_argument('-s', '--size', default=100, help='Image size to use in dataset')
+    parser.add_argument('-s', '--size', default=50, help='Image size to use in dataset')
     parser.add_argument('-t', '--type', choices=['train', 'val', 'test'], help='Type of dataset')
+    parser.add_argument('-o', '--output', default='dataset', help='Directory for storing the preprocessed dataset')
     args = parser.parse_args()
 
     if args.size < 50 or args.size > 200:
         parser.error('Image size should be within 50 to 200 pixels')
 
-    main(args.size, args.type)
+    # specify dataset and annotation directories
+    data_dir = 'dataset'
+    data_type = str(args.type) + '2017'
+    ann_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
+
+    main(args.size, args.type, args.output)
