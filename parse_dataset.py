@@ -81,15 +81,15 @@ def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1
         print()
 
 
-def create_dataset(coco, image_to_supercategories, img_size):
+def create_dataset(coco, image_to_supercategories, img_size, dataset_size):
     data = []
-    number_of_images = len(image_to_supercategories)
 
     # Initial call to print 0% progress
     print_progress_bar_counter = 0
-    print_progress_bar(print_progress_bar_counter, number_of_images, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-    for img_id, supercategory in image_to_supercategories.items():
+    image_to_supercategories_sampled = random.sample(image_to_supercategories.items(), dataset_size)  # Take random subset of images
+    for img_id, supercategory in image_to_supercategories_sampled:
         img = coco.loadImgs([img_id])[0]
         img_array = cv2.imread('%s/%s/%s' % (data_dir, data_type, img['file_name']), cv2.IMREAD_GRAYSCALE)
         new_img_array = cv2.resize(img_array, (img_size, img_size))
@@ -97,7 +97,7 @@ def create_dataset(coco, image_to_supercategories, img_size):
 
         # Update Progress Bar
         print_progress_bar_counter += 1
-        print_progress_bar(print_progress_bar_counter, number_of_images, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
     random.shuffle(data)  # shuffle items to reduce homogeneity
     return data
@@ -158,7 +158,8 @@ def main(img_size, dataset_type, output_dir):
 
     """ Create dataset """
     print('\nCreating %s dataset...' % dataset_type)
-    data = create_dataset(coco, image_to_supercategories, img_size)
+    dataset_size = 10000 if dataset_type == 'train' else 2500
+    data = create_dataset(coco, image_to_supercategories, img_size, dataset_size)
     x, y = create_features_and_labels(data)
     print('Done.')
     save_dataset(x, y, dataset_type, output_dir)
