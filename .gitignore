@@ -4,11 +4,12 @@ references/
 test_notebooks/
 
 # Large files
+dataset/glove.6B.50d.txt
+dataset/*.pickle
 dataset/Others/
 dataset/annotations/*.json
 dataset/train2017/*.jpg
 dataset/val2017/*.jpg
-dataset/*.pickle
 
 # Editor config files
 __pycache__/

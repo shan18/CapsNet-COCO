@@ -2,64 +2,48 @@ import random
 import argparse
 import cv2
 import pickle
+import nltk
 import numpy as np
 
 from pycocotools.coco import COCO
 
 
-def get_categories_and_supercategories(coco):
-    """
-    Obtain MSCOCO 2017 categories and supercategories
-    """
-    print('\nObtaining MSCOCO 2017 categories and supercategories...')
-    categories = coco.loadCats(coco.getCatIds())
-    supercategories = set([category['supercategory'] for category in categories])
-    print('Done.')
-    return categories, supercategories
+def read_glove_vecs(glove_file):
+    with open(glove_file, 'r') as f:
+        words = set()
+        word_to_vec_map = {}
+        for line in f:
+            line = line.strip().split()
+            curr_word = line[0]
+            words.add(curr_word)
+            word_to_vec_map[curr_word] = np.array(line[1:], dtype=np.float64)
+
+    return word_to_vec_map
 
 
-def assign_supercategory_ids(supercategories):
-    """
-    Assign id to each supercategory
-    """
-    supercategory_ids = {}
-    for idx, super_name in enumerate(supercategories):
-        supercategory_ids[super_name] = idx
-    return supercategory_ids
+def create_embeddings(word_to_vec_map, sentence):
+    words = nltk.word_tokenize(sentence.lower())
+    avg = np.zeros((50,))
+    for word in words:
+        try:
+            avg += word_to_vec_map[word]
+        except KeyError:
+            avg += word_to_vec_map['unk']
+    avg /= len(words)
+    return avg
 
 
-def map_supercategory_to_image(coco, categories):
-    """
-    key: supercategory
-    value: 'set' of corresponding image ids
-    """
-    supercategory_to_img = {}
-    for category in categories:
-        supercategory = category['supercategory']
-        category_id = coco.getCatIds(catNms=category['name'])
-        img_ids = coco.getImgIds(catIds=category_id)
-        if supercategory in supercategory_to_img:
-            supercategory_to_img[supercategory] |= set(img_ids)
-        else:
-            supercategory_to_img[supercategory] = set(img_ids)
-    return supercategory_to_img
-
-
-def map_image_to_supercategories(supercategories, supercategory_to_img, supercategory_ids):
+def map_image_to_caption(coco):
     """
     key: image id
-    value: one-hot vector of supercategories present in the image
+    value: a caption of the image
     """
-    image_to_supercategories = {}
-    for supercategory, img_ids in supercategory_to_img.items():
-        for img_id in img_ids:
-            if img_id in image_to_supercategories:
-                image_to_supercategories[img_id][supercategory_ids[supercategory]] = 1
-            else:
-                one_hot = [0] * len(supercategories)
-                one_hot[supercategory_ids[supercategory]] = 1
-                image_to_supercategories[img_id] = one_hot
-    return image_to_supercategories
+    image_to_caption = {}
+    for img_id in coco.getImgIds():
+        annotation_id = coco.getAnnIds(img_id)[random.randint(0, 4)]  # Take any one out of 5 captions
+        caption = coco.loadAnns(annotation_id)[0]['caption']
+        image_to_caption[img_id] = caption.lower()
+    return image_to_caption
 
 
 def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
@@ -81,19 +65,24 @@ def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1
         print()
 
 
-def create_dataset(coco, image_to_supercategories, img_size, dataset_size):
+def create_dataset(coco, word_to_vec_map, image_to_caption, img_size, dataset_size):
     data = []
 
     # Initial call to print 0% progress
     print_progress_bar_counter = 0
     print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-    image_to_supercategories_sampled = random.sample(image_to_supercategories.items(), dataset_size)  # Take random subset of images
-    for img_id, supercategory in image_to_supercategories_sampled:
+    image_to_caption_sampled = random.sample(image_to_caption.items(), dataset_size)
+    for img_id, caption in image_to_caption_sampled:
+        # load image array
         img = coco.loadImgs([img_id])[0]
         img_array = cv2.imread('%s/%s/%s' % (data_dir, data_type, img['file_name']), cv2.IMREAD_GRAYSCALE)
         new_img_array = cv2.resize(img_array, (img_size, img_size))
-        data.append([new_img_array, supercategory])
+        
+        # load caption embeddings
+        caption_vector = create_embeddings(word_to_vec_map, caption)
+        
+        data.append((new_img_array, caption_vector))
 
         # Update Progress Bar
         print_progress_bar_counter += 1
@@ -143,23 +132,21 @@ def save_dataset(x, y, dataset_type, output_dir):
 
 
 def main(img_size, dataset_type, output_dir):
-    """ Map image to supercategories
+    """ Map image to caption
     :param img_size: Image dimensions
     :param dataset_type: Can be train, val, test
     :param output_dir: Directory where the parsed dataset is to be stored
     """
     coco = COCO(ann_file)  # Initialize coco api
-    categories, supercategories = get_categories_and_supercategories(coco)
-    print('\nMapping image to supercategories...')
-    supercategory_ids = assign_supercategory_ids(supercategories)
-    supercategory_to_img = map_supercategory_to_image(coco, categories)
-    image_to_supercategories = map_image_to_supercategories(supercategories, supercategory_to_img, supercategory_ids)
+    word_to_vec_map = read_glove_vecs(data_dir + '/glove.6B.50d.txt')  # load embeddings
+    print('\nMapping image to caption...')
+    image_to_caption = map_image_to_caption(coco)
     print('Done.')
 
     """ Create dataset """
     print('\nCreating %s dataset...' % dataset_type)
     dataset_size = 10000 if dataset_type == 'train' else 2500
-    data = create_dataset(coco, image_to_supercategories, img_size, dataset_size)
+    data = create_dataset(coco, word_to_vec_map, image_to_caption, img_size, dataset_size)
     x, y = create_features_and_labels(data)
     print('Done.')
     save_dataset(x, y, dataset_type, output_dir)
@@ -167,17 +154,17 @@ def main(img_size, dataset_type, output_dir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create dataset using MSCOCO for CapsNet')
-    parser.add_argument('-s', '--size', default=50, help='Image size to use in dataset')
+    parser.add_argument('-s', '--size', default=250, help='Image size to use in dataset')
     parser.add_argument('-t', '--type', choices=['train', 'val', 'test'], help='Type of dataset')
     parser.add_argument('-o', '--output', default='dataset', help='Directory for storing the preprocessed dataset')
     args = parser.parse_args()
 
-    if args.size < 50 or args.size > 200:
-        parser.error('Image size should be within 50 to 200 pixels')
+    if args.size < 100 or args.size > 300:
+        parser.error('Image size should be within 100 to 300 pixels')
 
     # specify dataset and annotation directories
     data_dir = 'dataset'
     data_type = str(args.type) + '2017'
-    ann_file = '{}/annotations/instances_{}.json'.format(data_dir, data_type)
+    ann_file = '{}/annotations/captions_{}.json'.format(data_dir, data_type)
 
     main(args.size, args.type, args.output)
