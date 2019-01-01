@@ -4,8 +4,9 @@ import cv2
 import pickle
 import nltk
 import numpy as np
-
 from pycocotools.coco import COCO
+
+from utils import print_progress_bar
 
 
 def read_glove_vecs(glove_file):
@@ -44,25 +45,6 @@ def map_image_to_caption(coco):
         caption = coco.loadAnns(annotation_id)[0]['caption']
         image_to_caption[img_id] = caption.lower()
     return image_to_caption
-
-
-def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
-    """ Call in a loop to create terminal progress bar
-    :params iteration: current iteration (Int)
-    :params total: total iterations (Int)
-    :params prefix: prefix string (Str)
-    :params suffix: suffix string (Str)
-    :params decimals: positive number of decimals in percent complete (Int)
-    :params length: character length of bar (Int)
-    :params fill: bar fill character (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
 
 
 def create_dataset(coco, word_to_vec_map, image_to_caption, img_size, dataset_size):

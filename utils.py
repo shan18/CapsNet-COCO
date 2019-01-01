@@ -49,6 +49,26 @@ def combine_images(generated_images, height=None, width=None):
             img[:, :, 0]
     return image
 
+
+def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+    """ Call in a loop to create terminal progress bar
+    :params iteration: current iteration (Int)
+    :params total: total iterations (Int)
+    :params prefix: prefix string (Str)
+    :params suffix: suffix string (Str)
+    :params decimals: positive number of decimals in percent complete (Int)
+    :params length: character length of bar (Int)
+    :params fill: bar fill character (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+
 if __name__=="__main__":
     plot_log('result/log.csv')
 
