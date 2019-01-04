@@ -34,15 +34,15 @@ def build_vocabulary(data, threshold):
                     word_count[word] = word_count.get(word, 0) + 1
     
     # build vocabulary
-    vocabulary = [word for word, frequency in word_count.items() if frequency > threshold]
-    vocabulary.append('unk')
+    vocabulary = ['unk', 'ssss', 'eeee']  # unknown, start, end
+    vocabulary += [word for word, frequency in word_count.items() if frequency > threshold]
 
     # print some stats
     total_words = sum(word_count.values())
     infrequent_words = [word for word, frequency in word_count.items() if frequency <= threshold]
     infrequent_count = sum(word_count[word] for word in infrequent_words)
     print('\nTotal words:', total_words)
-    print('number of bad words: %d/%d = %.2f%%' % (
+    print('number of infrequent words: %d/%d = %.2f%%' % (
         len(infrequent_words), len(word_count), len(infrequent_words) * 100.0 / len(word_count))
     )
     print('number of words in vocabulary would be %d' % len(vocabulary))
