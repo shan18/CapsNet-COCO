@@ -18,6 +18,7 @@ def preprocess_captions(data):
         for caption in image['captions']:
             table = str.maketrans(dict.fromkeys(string.punctuation))
             processed_caption = str(caption).lower().translate(table).strip().split()
+            processed_caption = ['<sos>'] + processed_caption + ['<eos>']
             captions.append(processed_caption)
         image['captions'] = captions
     return data
@@ -34,7 +35,7 @@ def build_vocabulary(data, threshold):
                     word_count[word] = word_count.get(word, 0) + 1
     
     # build vocabulary
-    vocabulary = ['unk', 'ssss', 'eeee']  # unknown, start, end
+    vocabulary = ['unk', '<sos>', '<eos>', '<pad>']  # unknown, start, end, pad tokens
     vocabulary += [word for word, frequency in word_count.items() if frequency > threshold]
 
     # print some stats
@@ -73,7 +74,6 @@ def get_top_n_captions(data, n):
     return data
 
 
-
 def get_caption_vectors(data, max_length, word_to_index):
     """ Replace words in captions by their corresponding indices in the vocabulary """
     for image in data:
@@ -82,8 +82,8 @@ def get_caption_vectors(data, max_length, word_to_index):
             new_caption = [word_to_index[word] for word in caption]
             if len(new_caption) > max_length:  # Clip long captions
                 new_caption = new_caption[:max_length]
-            else:  # Pad smaller captions with '0'
-                new_caption = new_caption + [0] * (max_length - len(new_caption))
+            else:  # Pad smaller captions with '<pad>'
+                new_caption = new_caption + [word_to_index['<pad>']] * (max_length - len(new_caption))
             captions.append(new_caption)
         image['captions'] = captions
     return data
@@ -137,37 +137,33 @@ def create_dataset(data, params):
     x_train = encode_images(data_train, params, params['train'])
     print('Encoding training captions...')
     y_train = encode_captions(data_train, params['train'])
+    print('Saving training dataset...')
+    save_dataset(x_train, y_train, 'train', params['root'])
+    # free up memory so that the program does not freeze
+    del x_train, y_train
 
     # Create validation dataset
-    print('Encoding validation images...')
+    print('\nEncoding validation images...')
     x_val = encode_images(data_val, params, params['val'])
     print('Encoding validation captions...')
     y_val = encode_captions(data_val, params['val'])
-    
-    return (x_train, y_train), (x_val, y_val)
+    print('Saving validation dataset...')
+    save_dataset(x_val, y_val, 'val', params['root'])
+    # free up memory so that the program does not freeze
+    del x_val, y_val
 
 
-def save_dataset(x_train, y_train, x_val, y_val, root_path):
-    """ Save the training and validation dataset in a '.h5' file """
-    print('\nSaving dataset...')
+def save_dataset(x, y, dataset_type, root_path):
+    """ Save dataset in a '.h5' file """
 
-    # Training data
-    train_path = '{}/training_data.h5'.format(root_path)
-    h5f = h5py.File(train_path, 'w')
-    h5f.create_dataset('x_train', data=x_train)
-    h5f.create_dataset('y_train', data=y_train)
-    h5f.close()
-
-    # Validation data
-    val_path = '{}/validation_data.h5'.format(root_path)
-    h5f = h5py.File(val_path, 'w')
-    h5f.create_dataset('x_val', data=x_val)
-    h5f.create_dataset('y_val', data=y_val)
+    path = '{}/{}_data.h5'.format(root_path, dataset_type)
+    h5f = h5py.File(path, 'w')
+    h5f.create_dataset('x_{}'.format(dataset_type), data=x)
+    h5f.create_dataset('y_{}'.format(dataset_type), data=y)
     h5f.close()
 
     print('Done.')
-    print('Training data saved to:', train_path)
-    print('Validation data saved to:', val_path)
+    print('{} data saved to:'.format(dataset_type), path)
 
 
 def save_vocabulary(vocabulary, word_to_index, index_to_word, root_path):
@@ -212,12 +208,11 @@ def main(params):
     # replace words in captions by their corresponding indices in the vocabulary
     data = get_caption_vectors(data, params['length'], word_to_index)
 
-    # create training and validation dataset
-    (x_train, y_train), (x_val, y_val) = create_dataset(data, params)
+    # create and save training and validation dataset
+    create_dataset(data, params)
     print('Done.')
     
-    # save dataset and vocabulary
-    save_dataset(x_train, y_train, x_val, y_val, params['root'])
+    # save vocabulary
     save_vocabulary(vocabulary, word_to_index, index_to_word, params['root'])
 
 
