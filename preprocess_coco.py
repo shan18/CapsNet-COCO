@@ -9,16 +9,17 @@
 import os
 import json
 import random
+import argparse
 
 
-def main():
+def main(root_dir):
     """ Merge the contents of training and validation dataset into one and
         store only the necessary metadata from each image. """
     
     # load annotations
     print('Loading annotations...')
-    val = json.load(open('dataset/annotations/captions_val2017.json', 'r'))
-    train = json.load(open('dataset/annotations/captions_train2017.json', 'r'))
+    val = json.load(open('{}/annotations/captions_val2017.json'.format(root_dir), 'r'))
+    train = json.load(open('{}/annotations/captions_train2017.json.'.format(root_dir), 'r'))
     print('Done.')
 
     print('\nCreating JSON object...')
@@ -54,10 +55,15 @@ def main():
         out.append(json_image)
     
     # save as a json file
-    json.dump(out, open('dataset/coco_raw.json', 'w'))
+    out_path = '{}/coco_raw.json'.format(root_dir)
+    json.dump(out, open(out_path, 'w'))
     print('Done.')
-    print('\n Data saved to dataset/coco_raw.json')
+    print('\n Data saved to', out_path)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Preprocess MSCOCO dataset')
+    parser.add_argument('--root', default='dataset', help='Root directory containing the dataset folders')
+    args = parser.parse_args()
+
+    main(args.root)

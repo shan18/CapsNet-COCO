@@ -8,24 +8,7 @@ import pickle
 import argparse
 import numpy as np
 
-
-def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
-    """ Call in a loop to create terminal progress bar
-    :params iteration: current iteration (Int)
-    :params total: total iterations (Int)
-    :params prefix: prefix string (Str)
-    :params suffix: suffix string (Str)
-    :params decimals: positive number of decimals in percent complete (Int)
-    :params length: character length of bar (Int)
-    :params fill: bar fill character (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
+from utils import load_image, print_progress_bar
 
 
 def preprocess_captions(data):
@@ -96,8 +79,8 @@ def get_caption_vectors(data, max_length, word_to_index):
 
     for image in data:
         caption = [word_to_index[word] for word in image['captions']]
-        if len(caption) > max_length:  # Clip long captions
-            caption = caption[:max_length]
+        if len(caption) >= max_length:  # Clip long captions and add '<eos>' token at the end
+            caption = caption[:max_length-1] + [word_to_index['<eos>']]
         else:  # Pad smaller captions with '<pad>'
             caption = caption + [word_to_index['<pad>']] * (max_length - len(caption))
         image['captions'] = caption
@@ -134,15 +117,18 @@ def encode_images(data, params, dataset_size):
     print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
     for image in data:
-        img_array = cv2.imread('%s/%s' % (params['root'], image['file_path']), cv2.IMREAD_GRAYSCALE)
-        new_img_array = cv2.resize(img_array, (params['size'], params['size']))
-        images.append(new_img_array)
+        img_array = load_image(
+            '{}/{}'.format(params['root'], image['file_path']),
+            size=(params['image'], params['image']),
+            color=params['color']
+        )
+        images.append(img_array)
 
         # Update Progress Bar
         print_progress_bar_counter += 1
         print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
         
-    return np.expand_dims(np.array(images, dtype=np.float32), axis=-1).astype('float32') / 255.
+    return images
 
 
 def save_dataset(x, y, dataset_type, root_path):
@@ -161,32 +147,50 @@ def save_dataset(x, y, dataset_type, root_path):
 def create_dataset(data, params):
     """ Split dataset into training validation and test dataset """
 
-    data_train = data[:params['train']]
-    data_val = data[params['train']:params['train'] + params['val']]
-
     # Create training dataset
-    print('Encoding training images...')
-    x_train = encode_images(data_train, params, params['train'])
-    print('Encoding training captions...')
-    y_train = encode_captions(data_train, params['train'])
+    if params['train'] > 0:
+        data_train = data[:params['train']]
 
-    print('Saving training dataset...')
-    save_dataset(x_train, y_train, 'train', params['root'])
+        print('Encoding training images...')
+        x_train = encode_images(data_train, params, params['train'])
+        print('Encoding training captions...')
+        y_train = encode_captions(data_train, params['train'])
 
-    # free up memory so that the program does not freeze
-    del x_train, y_train
+        print('Saving training dataset...')
+        save_dataset(x_train, y_train, 'train', params['root'])
+
+        # free up memory so that the program does not freeze
+        del x_train, y_train
 
     # Create validation dataset
-    print('\nEncoding validation images...')
-    x_val = encode_images(data_val, params, params['val'])
-    print('Encoding validation captions...')
-    y_val = encode_captions(data_val, params['val'])
+    if params['val'] > 0:
+        data_val = data[params['train']:params['train'] + params['val']]
 
-    print('Saving validation dataset...')
-    save_dataset(x_val, y_val, 'val', params['root'])
+        print('\nEncoding validation images...')
+        x_val = encode_images(data_val, params, params['val'])
+        print('Encoding validation captions...')
+        y_val = encode_captions(data_val, params['val'])
 
-    # free up memory so that the program does not freeze
-    del x_val, y_val
+        print('Saving validation dataset...')
+        save_dataset(x_val, y_val, 'val', params['root'])
+
+        # free up memory so that the program does not freeze
+        del x_val, y_val
+    
+    # Create test dataset
+    if params['test'] > 0:
+        data_test = data[params['train'] + params['val']:params['train'] + params['val'] + params['test']]
+
+        print('\nEncoding test images...')
+        x_test = encode_images(data_test, params, params['test'])
+        print('Encoding test captions...')
+        y_test = encode_captions(data_test, params['test'])
+
+        print('Saving test dataset...')
+        save_dataset(x_test, y_test, 'test', params['root'])
+
+        # free up memory so that the program does not freeze
+        del x_test, y_test
 
 
 def save_vocabulary(vocabulary, word_to_index, index_to_word, root_path):
@@ -212,6 +216,10 @@ def save_vocabulary(vocabulary, word_to_index, index_to_word, root_path):
 def main(params):
     data = json.load(open(params['input'], 'r'))
     random.shuffle(data)
+
+    if len(data) < params['train'] + params['val'] + params['test']:
+        print('Invalid dataset splits')
+        return
 
     # Remove punctuations from captions and tokenize them
     print('Removing punctuations from captions...')
@@ -241,19 +249,20 @@ def main(params):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Preprocess MSCOCO dataset')
+    parser = argparse.ArgumentParser(description='Create dataset for training the Image Captioning Model')
 
     # Input json
     parser.add_argument('--input', required=True, help='Path to input json file containing the raw data')
-    parser.add_argument('--root', default='dataset', help='Root directory containing the dataset folders and input json')
+    parser.add_argument('--root', default='dataset', help='Root directory containing the dataset folders')
 
     # Dataset size
     parser.add_argument('--train', default=10000, type=int, help='Number of images to assign to training data')
     parser.add_argument('--val', default=2500, type=int, help='Number of images to assign to validation data')
-    parser.add_argument('--test', default=0, type=int, help='Number of images to assign to testing data')
+    parser.add_argument('--test', default=2000, type=int, help='Number of images to assign to testing data')
 
     # Image and caption options
-    parser.add_argument('--size', default=250, help='Image size to use in dataset')
+    parser.add_argument('--image', default=250, type=int, help='Image size to use in dataset')
+    parser.add_argument('--color', action='store_true', help='Images will be stored in BGR format')
     parser.add_argument(
         '--length', default=16, type=int, help='Max number of words in a caption. Captions longer than this get clipped.'
     )
@@ -265,6 +274,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     params = vars(args)  # convert to dictionary
-    params['data_dir'] = 'dataset'
-    
+
     main(params)
