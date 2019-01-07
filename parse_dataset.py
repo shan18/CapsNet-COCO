@@ -8,11 +8,29 @@ import pickle
 import argparse
 import numpy as np
 
-from utils import print_progress_bar
+
+def print_progress_bar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+    """ Call in a loop to create terminal progress bar
+    :params iteration: current iteration (Int)
+    :params total: total iterations (Int)
+    :params prefix: prefix string (Str)
+    :params suffix: suffix string (Str)
+    :params decimals: positive number of decimals in percent complete (Int)
+    :params length: character length of bar (Int)
+    :params fill: bar fill character (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
 
 
 def preprocess_captions(data):
-    """ Removes punctuations from captions and tokenizes them """
+    """ Remove punctuations from captions and tokenize them """
+
     for image in data:
         captions = []
         for caption in image['captions']:
@@ -62,35 +80,34 @@ def build_vocabulary(data, threshold):
     return data, vocabulary
 
 
-def get_top_n_captions(data, n):
-    """ Consider only top n captions with least 'unk' for each image """
+def get_top_caption(data):
+    """ For each image, consider only the caption with least number of 'unk' tokens """
 
     for image in data:
-        if len(image['captions']) > n:
-            unk_count = []
-            for caption in image['captions']:
-                unk_count.append((caption.count('unk'), caption))
-            image['captions'] = [x[1] for x in sorted(unk_count, key=lambda x: x[0])[:5]]
+        unk_count = []
+        for caption in image['captions']:
+            unk_count.append((caption.count('unk'), caption))
+        image['captions'] = max(unk_count, key=lambda x: x[0])[1]
     return data
 
 
 def get_caption_vectors(data, max_length, word_to_index):
     """ Replace words in captions by their corresponding indices in the vocabulary """
+
     for image in data:
-        captions = []
-        for caption in image['captions']:
-            new_caption = [word_to_index[word] for word in caption]
-            if len(new_caption) > max_length:  # Clip long captions
-                new_caption = new_caption[:max_length]
-            else:  # Pad smaller captions with '<pad>'
-                new_caption = new_caption + [word_to_index['<pad>']] * (max_length - len(new_caption))
-            captions.append(new_caption)
-        image['captions'] = captions
+        caption = [word_to_index[word] for word in image['captions']]
+        if len(caption) > max_length:  # Clip long captions
+            caption = caption[:max_length]
+        else:  # Pad smaller captions with '<pad>'
+            caption = caption + [word_to_index['<pad>']] * (max_length - len(caption))
+        image['captions'] = caption
+        
     return data
 
 
 def encode_captions(data, dataset_size):
     """ Store all captions into a single array """
+
     captions = []
 
     # Initial call to print 0% progress
@@ -109,6 +126,7 @@ def encode_captions(data, dataset_size):
 
 def encode_images(data, params, dataset_size):
     """ Store images in a numpy array """
+
     images = []
 
     # Initial call to print 0% progress
@@ -127,32 +145,6 @@ def encode_images(data, params, dataset_size):
     return np.expand_dims(np.array(images, dtype=np.float32), axis=-1).astype('float32') / 255.
 
 
-def create_dataset(data, params):
-    """ Split dataset into training validation and test dataset """
-    data_train = data[:params['train']]
-    data_val = data[params['train']:params['train'] + params['val']]
-
-    # Create training dataset
-    print('Encoding training images...')
-    x_train = encode_images(data_train, params, params['train'])
-    print('Encoding training captions...')
-    y_train = encode_captions(data_train, params['train'])
-    print('Saving training dataset...')
-    save_dataset(x_train, y_train, 'train', params['root'])
-    # free up memory so that the program does not freeze
-    del x_train, y_train
-
-    # Create validation dataset
-    print('\nEncoding validation images...')
-    x_val = encode_images(data_val, params, params['val'])
-    print('Encoding validation captions...')
-    y_val = encode_captions(data_val, params['val'])
-    print('Saving validation dataset...')
-    save_dataset(x_val, y_val, 'val', params['root'])
-    # free up memory so that the program does not freeze
-    del x_val, y_val
-
-
 def save_dataset(x, y, dataset_type, root_path):
     """ Save dataset in a '.h5' file """
 
@@ -166,8 +158,40 @@ def save_dataset(x, y, dataset_type, root_path):
     print('{} data saved to:'.format(dataset_type), path)
 
 
+def create_dataset(data, params):
+    """ Split dataset into training validation and test dataset """
+
+    data_train = data[:params['train']]
+    data_val = data[params['train']:params['train'] + params['val']]
+
+    # Create training dataset
+    print('Encoding training images...')
+    x_train = encode_images(data_train, params, params['train'])
+    print('Encoding training captions...')
+    y_train = encode_captions(data_train, params['train'])
+
+    print('Saving training dataset...')
+    save_dataset(x_train, y_train, 'train', params['root'])
+
+    # free up memory so that the program does not freeze
+    del x_train, y_train
+
+    # Create validation dataset
+    print('\nEncoding validation images...')
+    x_val = encode_images(data_val, params, params['val'])
+    print('Encoding validation captions...')
+    y_val = encode_captions(data_val, params['val'])
+
+    print('Saving validation dataset...')
+    save_dataset(x_val, y_val, 'val', params['root'])
+
+    # free up memory so that the program does not freeze
+    del x_val, y_val
+
+
 def save_vocabulary(vocabulary, word_to_index, index_to_word, root_path):
     """ Save vocabulary in a '.pickle' file """
+
     print('\nSaving vocabulary...')
 
     vocabulary_dict = {
@@ -202,8 +226,8 @@ def main(params):
     print('Done.')
 
     print('\nCreating training and validation dataset...')
-    # every image should have consistent number of captions
-    data = get_top_n_captions(data, 5)
+    # every image should have only one caption
+    data = get_top_caption(data)
 
     # replace words in captions by their corresponding indices in the vocabulary
     data = get_caption_vectors(data, params['length'], word_to_index)
@@ -239,9 +263,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-
-    if args.size < 100 or args.size > 300:  # validation on image size
-        parser.error('Image size should be within 100 to 300 pixels')
     
     params = vars(args)  # convert to dictionary
     params['data_dir'] = 'dataset'

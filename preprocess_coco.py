@@ -1,3 +1,11 @@
+""" Filter the MSCOCO 2017 dataset and create a simplified version.
+    The simplified version is a json array in which each json object contains:
+        - Image file path
+        - Image id
+        - List of captions for the corresponding image
+"""
+
+
 import os
 import json
 import random
