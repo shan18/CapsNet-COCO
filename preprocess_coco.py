@@ -19,7 +19,7 @@ def main(root_dir):
     # load annotations
     print('Loading annotations...')
     val = json.load(open('{}/annotations/captions_val2017.json'.format(root_dir), 'r'))
-    train = json.load(open('{}/annotations/captions_train2017.json.'.format(root_dir), 'r'))
+    train = json.load(open('{}/annotations/captions_train2017.json'.format(root_dir), 'r'))
     print('Done.')
 
     print('\nCreating JSON object...')
