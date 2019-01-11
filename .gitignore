@@ -1,3 +1,7 @@
+# models
+*.keras
+logs/
+
 # Reference files and folders
 resources/
 references/
