@@ -142,7 +142,7 @@ def load_coco(dataset_file, map_file):
     id_category = category_id_map['id_category']
     print('Done.')
 
-    return (x_train, y_train), (x_test, y_test), id_to_category
+    return (x_train, y_train), (x_test, y_test), id_category
 
 
 if __name__ == "__main__":
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         os.makedirs(args.save_dir)
 
     # load data
-    (x_train, y_train), (x_test, y_test), id_to_category = load_coco(args.dataset_file, args.map_file)
+    (x_train, y_train), (x_test, y_test), id_category = load_coco(args.dataset_file, args.map_file)
 
     # define model
     model, eval_model, manipulate_model = CapsNet(
