@@ -127,6 +127,7 @@ def load_coco(dataset_file, map_file):
     """
     Load preprocessed MSCOCO 2017 dataset
     """
+    print('\nLoading dataset...')
     h5f = h5py.File(dataset_file, 'r')
     x = h5f['x'][:]
     y = h5f['y'][:]
@@ -138,7 +139,8 @@ def load_coco(dataset_file, map_file):
 
     with open(map_file, 'rb') as mapping:
         category_id_map = pickle.load(mapping)
-    id_to_category = category_id_map['id_to_category']
+    id_category = category_id_map['id_category']
+    print('Done.')
 
     return (x_train, y_train), (x_test, y_test), id_to_category
 
