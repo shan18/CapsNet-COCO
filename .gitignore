@@ -10,6 +10,7 @@ test_notebooks/
 # Large files
 dataset/*
 !dataset/README.txt
+!dataset/*.py
 *.h5
 *.pickle
 
