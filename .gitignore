@@ -10,6 +10,8 @@ test_notebooks/
 # Large files
 dataset/*
 !dataset/README.txt
+*.h5
+*.pickle
 
 # Editor config files
 __pycache__/
