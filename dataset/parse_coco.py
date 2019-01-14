@@ -9,63 +9,109 @@
 
 import os
 import json
-import random
+import pickle
 import argparse
 
 
-def main(root_dir):
-    """ Merge the contents of training and validation dataset into one and
-        store only the necessary metadata from each image. """
-    
-    # load annotations
-    print('Loading instances and annotations...')
-    categories_file = json.load(open('{}/annotations/instances_train2017.json'.format(root_dir), 'r'))
-    captions_file = json.load(open('{}/annotations/captions_train2017.json'.format(root_dir), 'r'))
-    print('Done.')
-
-    print('\nCreating JSON object...')
-    images = categories_file['images']
-    categories = categories_file['annotations']
-    captions = captions_file['annotations']
-
+def group_categories(categories):
+    """ Group categories by image
+    """
     # map each category id to its name
     id_to_category = {}
     for category in categories_file['categories']:
         id_to_category[category['id']] = category['name']
 
-    # group categories by image
     image_categories = {}
     for category in categories:
         if category['image_id'] not in image_categories:
             image_categories[category['image_id']] = []
         if id_to_category[category['category_id']] not in image_categories[category['image_id']]:
             image_categories[category['image_id']].append(id_to_category[category['category_id']])
+    return image_categories
 
-    # group captions by image
+
+def group_captions(captions):
+    """ Group captions by image """
     image_captions = {}
     for caption in captions:
         img_id = caption['image_id']
         if not img_id in image_captions:
             image_captions[img_id] = []
         image_captions[img_id].append(caption['caption'])
-    
-    # create the json blob
-    out = []
+    return image_captions
+
+
+def get_filename(images):
+    """ Get filename of each image """
+    image_file = {}
     for image in images:
-        img_id = image['id']
-        if img_id in image_categories and img_id in image_captions:
-            json_image = {}
-            json_image['id'] = img_id
-            json_image['file_path'] = os.path.join('dataset/train2017', image['file_name'])
-            json_image['categories'] = image_categories[img_id]
-            json_image['captions'] = image_captions[img_id]
-            out.append(json_image)
-    
-    # save as a json file
-    out_path = '{}/coco_raw.json'.format(root_dir)
-    json.dump(out, open(out_path, 'w'))
+        image_file[image['id']] = os.path.join('train2017', image['file_name'])
+    return image_file
+
+
+def map_category_id(category_map):
+    """ Assign an ID to each category """
+    category_id = {}
+    id_category = {}
+    counter = 0
+    for category in category_map:
+        category_id[category['name']] = counter
+        id_category[counter] = category['name']
+        counter += 1
+    return category_id, id_category
+
+
+def save_dataset(image_categories, image_captions, image_file, category_id, id_category, root_dir):
+    """ Save parsed dataset """
+    print('\nSaving raw dataset...')
+
+    coco_raw = {
+        'image_categories': image_categories,
+        'image_captions': image_captions,
+        'image_file': image_file,
+        'category_id': category_id,
+        'id_category': id_category
+    }
+
+    out_path = '{}/coco_raw.pickle'.format(root_dir)
+    pickle_out = open(out_path, 'wb')
+    pickle.dump(coco_raw, pickle_out)
+    pickle_out.close()
+
     print('Done.')
     print('\n Data saved to', out_path)
+
+
+def main(root_dir):
+    """ Merge the contents of training and validation dataset into one and
+        store only the necessary metadata from each image.
+    """
+    # load annotations
+    print('Loading instances and annotations...')
+    captions_file = json.load(open('{}/annotations/captions_train2017.json'.format(root_dir), 'r'))
+    categories_file = json.load(open('{}/annotations/instances_train2017.json'.format(root_dir), 'r'))
+    print('Done.')
+
+    images = captions_file['images']
+    captions = captions_file['annotations']
+    categories = categories_file['annotations']
+
+    # group categories by image
+    image_categories = group_categories(categories)
+
+    # group captions by image
+    image_captions = group_captions(captions)
+
+    # get filename of each image
+    image_file = get_filename(images)
+
+    # assign each category an id.
+    # we are not using the default ids given in the dataset because
+    # the id ranges are not continuous.
+    category_id, id_category = map_category_id(categories_file['categories'])
+    
+    # save parsed coco dataset
+    save_dataset(image_categories, image_captions, image_file, category_id, id_category, root_dir)
 
 
 if __name__ == '__main__':
