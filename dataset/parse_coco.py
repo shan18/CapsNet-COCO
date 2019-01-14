@@ -13,7 +13,7 @@ import pickle
 import argparse
 
 
-def group_categories(categories):
+def group_categories(categories_file):
     """ Group categories by image
     """
     # map each category id to its name
@@ -22,7 +22,7 @@ def group_categories(categories):
         id_to_category[category['id']] = category['name']
 
     image_categories = {}
-    for category in categories:
+    for category in categories_file['annotations']:
         if category['image_id'] not in image_categories:
             image_categories[category['image_id']] = []
         if id_to_category[category['category_id']] not in image_categories[category['image_id']]:
@@ -92,18 +92,14 @@ def main(root_dir):
     categories_file = json.load(open('{}/annotations/instances_train2017.json'.format(root_dir), 'r'))
     print('Done.')
 
-    images = captions_file['images']
-    captions = captions_file['annotations']
-    categories = categories_file['annotations']
-
     # group categories by image
-    image_categories = group_categories(categories)
+    image_categories = group_categories(categories_file)
 
     # group captions by image
-    image_captions = group_captions(captions)
+    image_captions = group_captions(captions_file['annotations'])
 
     # get filename of each image
-    image_file = get_filename(images)
+    image_file = get_filename(captions_file['images'])
 
     # assign each category an id.
     # we are not using the default ids given in the dataset because
