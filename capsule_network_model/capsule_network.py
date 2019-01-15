@@ -9,6 +9,7 @@ from keras import backend as K
 from keras import layers, models, optimizers, callbacks
 
 from capsule_layers import CapsuleLayer, PrimaryCap, Length, Mask
+from capsnet_utils import plot_log
 
 K.set_image_data_format('channels_last')
 
@@ -117,7 +118,6 @@ def train(model, data, args):
     model.save_weights(args['save_dir'] + '/trained_model.h5')
     print('Trained model saved to \'%s/trained_model.h5\'' % args['save_dir'])
 
-    from utils import plot_log
     plot_log(args['save_dir'] + '/log.csv', show=True)
 
     return model
