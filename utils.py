@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 
 
-def load_image(path, size=None, color=False):
+def load_image(path, size=None, grayscale=False):
     """
     Load the image from the given file-path and resize it
     to the given size if not None.
     """
 
     # Load the image using opencv
-    if color:  # BGR format
+    if not grayscale:  # BGR format
         image = cv2.imread(path)
     else:  # grayscale format
         image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)

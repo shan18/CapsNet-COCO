@@ -34,7 +34,7 @@ def encode_images(image_ids, image_file, params):
         img_array = load_image(
             os.path.join(params['input_images'], image_file[image_id]),
             size=(params['image_size'], params['image_size']),
-            color=params['color']
+            grayscale=params['grayscale']
         )
         images.append(img_array)
 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--dataset_size', default=12500, type=int, help='Size of dataset')
     parser.add_argument('--image_size', default=250, type=int, help='Image size to use in dataset')
-    parser.add_argument('--color', action='store_true', help='Images will be stored in BGR format')
+    parser.add_argument('--grayscale', action='store_true', help='Images will be stored in grayscale')
     args = parser.parse_args()
     
     params = vars(args)  # convert to dictionary
