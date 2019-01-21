@@ -42,7 +42,7 @@ def encode_images(image_ids, image_file, params):
         print_progress_bar_counter += 1
         print_progress_bar(print_progress_bar_counter, params['dataset_size'], prefix = 'Progress:', suffix = 'Complete', length = 50)
         
-    return np.array(images)
+    return np.array(images, dtype=np.float32)
 
 
 def encode_categories(image_ids, image_categories, category_id, dataset_size):
@@ -66,7 +66,7 @@ def encode_categories(image_ids, image_categories, category_id, dataset_size):
         print_progress_bar_counter += 1
         print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-    return np.array(categories, dtype=np.int64)
+    return np.array(categories, dtype=np.float32)
 
 
 def save_dataset(x, y, out_path):
