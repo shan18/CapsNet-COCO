@@ -42,9 +42,9 @@ class Mask(layers.Layer):
         else:  # if no true label, mask by the max length of capsules. Mainly used for prediction
             # compute lengths of capsules
             x = K.sqrt(K.sum(K.square(inputs), -1))
-            # generate the mask which is a one-hot code.
+            # generate the mask which is a multi one-hot code.
             # mask.shape=[None, n_classes]=[None, num_capsule]
-            mask = K.one_hot(indices=K.argmax(x, 1), num_classes=x.get_shape().as_list()[1])
+            mask = K.cast(K.greater(x, 0.5), tf.float32)
 
         # inputs.shape=[None, num_capsule, dim_capsule]
         # mask.shape=[None, num_capsule]
