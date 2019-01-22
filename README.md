@@ -21,7 +21,7 @@ This repository contains the implementation of Capsule Networks on MSCOCO 2017 d
 `$ python capsule_network_model/capsnet_create_dataset.py`
 
 
-## Train Capsult-Network
+## Train Capsule-Network
 1. To run with the default settings  
 `$ python capsule_network_model/capsule_network.py`
 
