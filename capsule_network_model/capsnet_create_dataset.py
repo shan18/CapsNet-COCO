@@ -45,7 +45,7 @@ def encode_images(image_ids, image_file, params):
     return np.array(images, dtype=np.float32)
 
 
-def encode_categories(image_ids, image_categories, category_id, dataset_size):
+def encode_categories(image_ids, image_categories, category_id, params):
     """ Replace all category names with their respective IDs and
         store them in a numpy array as a multi-hot vector.
     """
@@ -54,17 +54,20 @@ def encode_categories(image_ids, image_categories, category_id, dataset_size):
 
     # Initial call to print 0% progress
     print_progress_bar_counter = 0
-    print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    print_progress_bar(print_progress_bar_counter, params['dataset_size'], prefix = 'Progress:', suffix = 'Complete', length = 50)
 
     for image_id in image_ids:
-        multi_hot = [0] * len(category_id)
-        for category in image_categories[image_id]:
-            multi_hot[category_id[category]] = 1
-        categories.append(multi_hot)
+        one_hot = [0] * len(category_id)
+        if params['single_label']:
+            one_hot[category_id[random.choice(image_categories[image_id])]] = 1
+        else:
+            for category in image_categories[image_id]:
+                one_hot[category_id[category]] = 1
+        categories.append(one_hot)
 
         # Update Progress Bar
         print_progress_bar_counter += 1
-        print_progress_bar(print_progress_bar_counter, dataset_size, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        print_progress_bar(print_progress_bar_counter, params['dataset_size'], prefix = 'Progress:', suffix = 'Complete', length = 50)
 
     return np.array(categories, dtype=np.float32)
 
@@ -96,7 +99,7 @@ def create_dataset(image_categories, image_file, category_id, params):
 
     # encode categories
     print('\nEncoding categories...')
-    y = encode_categories(image_ids, image_categories, category_id, params['dataset_size'])
+    y = encode_categories(image_ids, image_categories, category_id, params)
     print('Done.')
 
     # save dataset
@@ -135,6 +138,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--dataset_size', default=12500, type=int, help='Size of dataset')
     parser.add_argument('--image_size', default=250, type=int, help='Image size to use in dataset')
+    parser.add_argument('--single_label', action='store_true', help='Image label will store only one label per image')
     parser.add_argument('--grayscale', action='store_true', help='Images will be stored in grayscale')
     args = parser.parse_args()
     
