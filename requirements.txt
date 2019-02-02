@@ -1,4 +1,8 @@
-numpy==1.14.3
-matplotlib==3.0.0
+numpy
+pandas
+matplotlib
 opencv-python
-tensorflow==1.7.0
+tensorflow
+keras
+pickle
+h5py

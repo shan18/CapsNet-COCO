@@ -3,9 +3,7 @@
 logs/
 
 # Reference files and folders
-resources/
 references/
-test_notebooks/
 
 # Large files
 dataset/*
