@@ -23,4 +23,8 @@ This repository contains the implementation of Capsule Networks on MSCOCO 2017 d
 1. To run with the default settings  
    `$ python capsule_network.py`
 
+## Issue
+
+The current architecture of CapsNet is not suitable handling complex real-world images present in the MSCOCO dataset. As a result, the trained model does not converge.
+
 We used this [repository's](https://github.com/XifengGuo/CapsNet-Keras) implementation of CapsNet.
