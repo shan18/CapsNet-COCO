@@ -5,8 +5,6 @@ import pickle
 import argparse
 import numpy as np
 
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # To import function from the utils file
 from utils import load_image, print_progress_bar
 
 
@@ -123,17 +121,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create dataset for training the Capsule Network Model')
     parser.add_argument(
         '--input_raw',
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dataset/coco_raw.pickle'),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/coco_raw.pickle'),
         help='Path to file containing the raw data'
     )
     parser.add_argument(
         '--input_images',
-        default=os.path.join(os.path.dirname(os.path.realpath(__file__)), '../dataset'),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset'),
         help='Root directory containing the folders having images'
     )
     parser.add_argument(
         '--output',
-        default=os.path.dirname(os.path.realpath(__file__)),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset'),
         help='Path to store the dataset'
     )
     parser.add_argument('--dataset_size', default=12500, type=int, help='Size of dataset')

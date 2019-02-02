@@ -9,7 +9,7 @@ from keras import backend as K
 from keras import layers, models, optimizers, callbacks
 
 from capsule_layers import CapsuleLayer, PrimaryCap, Length, Mask
-from capsnet_utils import plot_log
+from utils import plot_log
 
 K.set_image_data_format('channels_last')
 
@@ -160,11 +160,11 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help="Save weights by TensorBoard")
     parser.add_argument('--save_dir', default='./result')
     parser.add_argument(
-        '--dataset_file', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'capsnet_train_data.h5'),
+        '--dataset_file', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset/capsnet_train_data.h5'),
         help='File having the preprocessed dataset'
     )
     parser.add_argument(
-        '--map_file', default=os.path.join(os.path.dirname(os.path.realpath(__file__)), '../dataset/coco_raw.pickle'),
+        '--map_file', default=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dataset/coco_raw.pickle'),
         help='File having the id to category map'
     )
     args = parser.parse_args()
